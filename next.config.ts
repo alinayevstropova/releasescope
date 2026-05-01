@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "playwright",
+    "@axe-core/playwright",
+    "axe-core",
+    "lighthouse",
+    "chrome-launcher",
+  ],
 };
 
 export default nextConfig;

@@ -8,8 +8,6 @@ The product is designed to feel like a real QA command center: clear empty state
 
 ## Preview
 
-Project demo page: [https://alinayevstropova.github.io/releasescope/](https://alinayevstropova.github.io/releasescope/)
-
 Run it locally and open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 ```bash

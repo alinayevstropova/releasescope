@@ -1,10 +1,14 @@
 # ReleaseScope
 
-ReleaseScope is a release-readiness workspace for web QA teams. It opens a target URL with Playwright, checks accessibility with axe-core, scores page quality with Lighthouse, and turns the evidence into a release decision, QA score, and issue-ready backlog.
+ReleaseScope is an AI release-readiness platform for web teams. It opens a target URL with Playwright, checks accessibility with axe-core, scores page quality with Lighthouse, and turns the evidence into a release decision, QA score, and issue-ready backlog.
+
+The long-term product direction is a scalable release command center for developers, QA engineers, support engineers, and small SaaS teams: CI checks, GitHub PR comments, public audit reports, AI repair briefs, release notes, and EU-focused accessibility/compliance packs.
 
 The product is designed to feel like a real QA command center: clear empty states, loading feedback, responsive report layouts, plain-language findings, and a custom Release map visual in the header.
 
 ## Preview
+
+Project demo page: [https://alinayevstropova.github.io/releasescope/](https://alinayevstropova.github.io/releasescope/)
 
 Run it locally and open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
@@ -32,6 +36,17 @@ npm run dev
 - Shows polished empty, loading, success, warning, and error states
 - Supports desktop and mobile viewport audits
 - Optionally generates an OpenAI QA summary when `OPENAI_API_KEY` is configured
+
+## Product Roadmap
+
+ReleaseScope is designed to expand as a product ecosystem:
+
+- **ReleaseScope Cloud**: project dashboard, release history, team ownership, trend charts, and shareable audit reports
+- **ReleaseScope CLI**: `npx releasescope audit https://example.com` for local and CI usage
+- **ReleaseScope GitHub Action**: audit preview deployments and comment release risk directly on pull requests
+- **ReleaseScope Browser Extension**: connect manual page inspection with the cloud dashboard
+- **AI QA Copilot**: generate edge cases, regression plans, issue descriptions, support handoff notes, and release notes
+- **EU Compliance Packs**: WCAG, GDPR/cookie checks, security headers, privacy-policy checks, and SaaS launch readiness
 
 ## Automation QA Coverage
 

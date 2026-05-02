@@ -19,11 +19,8 @@ npm run dev
 
 ![ReleaseScope empty dashboard](public/screenshots/dashboard-empty.png)
 
-![ReleaseScope loading state](public/screenshots/dashboard-loading.png)
-
 ![ReleaseScope audit report](public/screenshots/dashboard-report.png)
 
-![ReleaseScope mobile report](public/screenshots/dashboard-report-mobile.png)
 
 ## What It Does
 

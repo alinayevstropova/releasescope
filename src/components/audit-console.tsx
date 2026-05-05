@@ -73,6 +73,14 @@ const decisionStyles: Record<
   },
 };
 
+const auditSeverityStyles = {
+  info: "bg-neutral-100 text-neutral-700",
+  low: "bg-emerald-100 text-emerald-950",
+  medium: "bg-amber-100 text-amber-950",
+  high: "bg-orange-100 text-orange-950",
+  critical: "bg-red-100 text-red-950",
+};
+
 export function AuditConsole() {
   const [url, setUrl] = useState(DEFAULT_TARGET_URL);
   const [viewport, setViewport] = useState<AuditViewport>("desktop");
@@ -736,6 +744,9 @@ function DecisionPanel({ result }: { result: QaAuditResult }) {
             Score combines page response, accessibility severity, page-quality checks, browser stability,
             and basic content structure.
           </p>
+          {result.assessment.scoreExplanation ? (
+            <ScoreDrivers explanation={result.assessment.scoreExplanation} />
+          ) : null}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -744,6 +755,41 @@ function DecisionPanel({ result }: { result: QaAuditResult }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function ScoreDrivers({
+  explanation,
+}: {
+  explanation: NonNullable<QaAuditResult["assessment"]["scoreExplanation"]>;
+}) {
+  const drivers = explanation.contributions.slice(0, 4);
+
+  return (
+    <div className="mt-4 rounded-sm bg-white/60 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Score drivers</p>
+        <span className="font-mono text-xs">-{explanation.totalPenalty} weighted points</span>
+      </div>
+      <p className="mt-2 text-sm leading-5 opacity-80">{explanation.summary}</p>
+      <div className="mt-3 grid gap-2">
+        {drivers.length ? (
+          drivers.map((driver) => (
+            <div className="grid gap-1 rounded-sm bg-white/70 px-3 py-2 text-sm" key={driver.id}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">{driver.label}</span>
+                <span className={`rounded-sm px-2 py-1 text-xs ${auditSeverityStyles[driver.severity]}`}>
+                  {driver.severity}
+                </span>
+              </div>
+              <p className="leading-5 opacity-80">{driver.detail}</p>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-sm bg-white/70 px-3 py-2 text-sm leading-5">No score penalties applied.</p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -938,6 +984,12 @@ function QualityGatePanel({ result }: { result: QaAuditResult }) {
           <Fact label="Console errors" value={String(result.page.consoleErrors.length)} />
           <Fact label="Page errors" value={String(result.page.pageErrors.length)} />
           <Fact label="Failed requests" value={String(result.page.failedRequests.length)} />
+          {result.security ? (
+            <>
+              <Fact label="Security warnings" value={String(result.security.warningCount)} />
+              <Fact label="Security failures" value={String(result.security.failedCount)} />
+            </>
+          ) : null}
           {result.warnings.length ? (
             <div className="rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
               {result.warnings.join(" ")}

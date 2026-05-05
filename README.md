@@ -9,6 +9,7 @@ The product is designed to feel like a real QA command center: clear empty state
 ## Product Docs
 
 - [Product vision](docs/product-vision.md)
+- [Architecture](docs/architecture.md)
 
 ## Preview
 

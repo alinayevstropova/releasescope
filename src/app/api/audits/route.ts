@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { summarizeAuditWithAi } from "@/lib/openai/summary";
 import { runQaAudit } from "@/lib/qa/audit";
 import {
@@ -8,17 +7,11 @@ import {
   UnsafeAuditTargetError,
   getPublicErrorMessage,
 } from "@/lib/qa/errors";
+import { auditRequestSchema, qaAuditResultSchema } from "@/lib/qa/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-const auditRequestSchema = z.object({
-  url: z.string().url(),
-  viewport: z.enum(["desktop", "mobile"]).default("desktop"),
-  includeAi: z.boolean().default(true),
-  notes: z.string().max(2_000).optional(),
-});
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -44,7 +37,7 @@ export async function POST(request: Request) {
       result.aiSummary = await summarizeAuditWithAi(result, parsed.data.notes);
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(qaAuditResultSchema.parse(result));
   } catch (error) {
     if (
       error instanceof InvalidAuditTargetError ||

@@ -6,6 +6,10 @@ The long-term product direction is a scalable release command center for develop
 
 The product is designed to feel like a real QA command center: clear empty states, loading feedback, responsive report layouts, plain-language findings, and a custom Release map visual in the header.
 
+## Product Docs
+
+- [Product vision](docs/product-vision.md)
+
 ## Preview
 
 Run it locally and open [http://127.0.0.1:3000](http://127.0.0.1:3000).

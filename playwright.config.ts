@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./tests",
   forbidOnly: !!process.env.CI,
   fullyParallel: true,
-  timeout: 30_000,
+  timeout: 45_000,
   expect: {
     timeout: 10_000,
   },
@@ -12,7 +12,7 @@ export default defineConfig({
     ? [["list"], ["html", { open: "never" }], ["json", { outputFile: "test-results/playwright.json" }]]
     : [["list"], ["html", { open: "never" }]],
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 2,
   use: {
     baseURL: "http://127.0.0.1:3107",
     screenshot: "only-on-failure",

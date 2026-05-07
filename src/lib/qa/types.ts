@@ -209,20 +209,46 @@ export type SecurityReport = {
   failedCount: number;
 };
 
+export type AiIssueDescription = {
+  title: string;
+  priority: AuditBacklogItem["priority"];
+  expectedBehavior: string;
+  actualBehavior: string;
+  evidence: string;
+  suggestedFix: string;
+};
+
+export type AiReleaseNotes = {
+  knownRisks: string[];
+  safeToShip: string[];
+};
+
+export type AiCopilotReport = {
+  plainLanguageSummary: string;
+  issueDescriptions: AiIssueDescription[];
+  edgeCases: string[];
+  regressionChecklist: string[];
+  supportHandoffNote: string;
+  releaseNotes: AiReleaseNotes;
+};
+
 export type AiSummary =
   | {
       status: "generated";
       model: string;
       content: string;
+      report: AiCopilotReport;
     }
   | {
       status: "skipped";
       reason: string;
+      fallbackReport?: AiCopilotReport;
     }
   | {
       status: "failed";
       model?: string;
       reason: string;
+      fallbackReport?: AiCopilotReport;
     };
 
 export type QaAuditResult = {

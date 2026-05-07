@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import type { QaAuditResult } from "@/lib/qa/types";
+import type { AiCopilotReport, QaAuditResult } from "@/lib/qa/types";
 
 test("home page loads with clear product copy and no serious accessibility violations", async ({ page }) => {
   await page.goto("/");
@@ -39,7 +39,7 @@ test("keeps invalid target URLs in the browser validation path", async ({ page }
 
 test("shows a useful loading state while the audit is running", async ({ page }) => {
   await page.route("**/api/audits", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
     await route.fulfill({
       contentType: "application/json",
       json: mockAuditResult,
@@ -103,6 +103,35 @@ test("renders release decision, backlog, and plain-language page-quality finding
   expect(copiedText).toContain("You are a senior product engineer and QA automation engineer.");
   expect(copiedText).toContain("Improve page speed score");
   expect(copiedText).toContain("Buttons must have discernible text");
+});
+
+test("renders structured AI copilot fallback sections", async ({ page }) => {
+  await page.route("**/api/audits", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        ...mockAuditResult,
+        aiSummary: {
+          status: "skipped",
+          reason: "OPENAI_API_KEY is not configured.",
+          fallbackReport: mockCopilotReport,
+        },
+      },
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Target URL").fill("https://example.com");
+  await page.getByRole("button", { name: "Run audit" }).click();
+
+  await expect(page.getByText("OpenAI summary skipped")).toBeVisible();
+  await expect(page.getByText("Plain-language release summary")).toBeVisible();
+  await expect(page.getByText("Issue descriptions")).toBeVisible();
+  await expect(page.getByText("Edge cases")).toBeVisible();
+  await expect(page.getByText("Regression checklist")).toBeVisible();
+  await expect(page.getByText("Support handoff note")).toBeVisible();
+  await expect(page.getByText("Known risks")).toBeVisible();
+  await expect(page.getByText("Safe to ship")).toBeVisible();
 });
 
 test("page-quality fixes use the page scroll instead of a nested scroll box", async ({ page }) => {
@@ -273,4 +302,25 @@ const mockAuditResult: QaAuditResult = {
     ],
   },
   warnings: [],
+};
+
+const mockCopilotReport: AiCopilotReport = {
+  plainLanguageSummary: "Release needs QA review because accessibility and page-quality risks remain.",
+  issueDescriptions: [
+    {
+      title: "Fix unnamed button",
+      priority: "P1",
+      expectedBehavior: "The button has a visible or programmatic accessible name.",
+      actualBehavior: "The audit found a button without discernible text.",
+      evidence: "button-name affected one element.",
+      suggestedFix: "Add visible text or aria-label and rerun axe-core.",
+    },
+  ],
+  edgeCases: ["Keyboard-only audit of the primary flow."],
+  regressionChecklist: ["Run typecheck, lint, build, and Playwright tests."],
+  supportHandoffNote: "Support should know accessibility fixes are still under review.",
+  releaseNotes: {
+    knownRisks: ["An accessibility issue remains open."],
+    safeToShip: ["No server error was detected."],
+  },
 };

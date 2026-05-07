@@ -155,6 +155,27 @@ const securityCheckSchema = z.object({
   evidence: z.array(auditEvidenceSchema),
 });
 
+export const aiCopilotReportSchema = z.object({
+  plainLanguageSummary: z.string().min(1),
+  issueDescriptions: z.array(
+    z.object({
+      title: z.string().min(1),
+      priority: z.enum(["P0", "P1", "P2", "P3"]),
+      expectedBehavior: z.string().min(1),
+      actualBehavior: z.string().min(1),
+      evidence: z.string().min(1),
+      suggestedFix: z.string().min(1),
+    }),
+  ),
+  edgeCases: z.array(z.string().min(1)),
+  regressionChecklist: z.array(z.string().min(1)),
+  supportHandoffNote: z.string().min(1),
+  releaseNotes: z.object({
+    knownRisks: z.array(z.string().min(1)),
+    safeToShip: z.array(z.string().min(1)),
+  }),
+});
+
 export const qaAuditResultSchema = z.object({
   id: z.string(),
   url: z.string(),
@@ -219,15 +240,18 @@ export const qaAuditResultSchema = z.object({
         status: z.literal("generated"),
         model: z.string(),
         content: z.string(),
+        report: aiCopilotReportSchema,
       }),
       z.object({
         status: z.literal("skipped"),
         reason: z.string(),
+        fallbackReport: aiCopilotReportSchema.optional(),
       }),
       z.object({
         status: z.literal("failed"),
         model: z.string().optional(),
         reason: z.string(),
+        fallbackReport: aiCopilotReportSchema.optional(),
       }),
     ])
     .optional(),

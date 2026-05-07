@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type {
   AccessibilityViolation,
+  AiCopilotReport,
   AuditBacklogItem,
   AuditDecision,
   AuditViewport,
@@ -1084,16 +1085,23 @@ function AiSummaryPanel({ summary }: { summary: QaAuditResult["aiSummary"] }) {
     return null;
   }
 
+  const report = summary.status === "generated" ? summary.report : summary.fallbackReport;
+
   if (summary.status !== "generated") {
     return (
       <section className="qa-card border-amber-200 bg-amber-50 p-5 text-amber-900">
         <div className="flex items-start gap-3">
           <Bot className="mt-0.5 h-5 w-5" aria-hidden="true" />
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold">OpenAI summary {summary.status}</p>
             <p className="mt-1 text-sm">{summary.reason}</p>
           </div>
         </div>
+        {report ? (
+          <div className="mt-5 rounded-md border border-amber-200 bg-white/55 p-4">
+            <CopilotReportView report={report} tone="amber" />
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -1109,10 +1117,80 @@ function AiSummaryPanel({ summary }: { summary: QaAuditResult["aiSummary"] }) {
           {summary.model}
         </span>
       </div>
-      <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-emerald-950">
-        {summary.content}
-      </pre>
+      <CopilotReportView report={summary.report} tone="emerald" />
     </section>
+  );
+}
+
+function CopilotReportView({
+  report,
+  tone,
+}: {
+  report: AiCopilotReport;
+  tone: "amber" | "emerald";
+}) {
+  const textTone = tone === "emerald" ? "text-emerald-950" : "text-amber-950";
+
+  return (
+    <div className={`grid gap-5 ${textTone}`}>
+      <div>
+        <p className="text-sm font-semibold">Plain-language release summary</p>
+        <p className="mt-2 text-sm leading-6">{report.plainLanguageSummary}</p>
+      </div>
+
+      <div className="grid gap-3">
+        <p className="text-sm font-semibold">Issue descriptions</p>
+        {report.issueDescriptions.length ? (
+          report.issueDescriptions.map((issue) => (
+            <div className="rounded-md bg-white/70 p-3 text-sm" key={`${issue.priority}-${issue.title}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-sm bg-white px-2 py-1 font-mono text-xs">{issue.priority}</span>
+                <p className="font-medium">{issue.title}</p>
+              </div>
+              <div className="mt-2 grid gap-1 leading-5">
+                <p><span className="font-medium">Expected:</span> {issue.expectedBehavior}</p>
+                <p><span className="font-medium">Actual:</span> {issue.actualBehavior}</p>
+                <p><span className="font-medium">Evidence:</span> {issue.evidence}</p>
+                <p><span className="font-medium">Suggested fix:</span> {issue.suggestedFix}</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-md bg-white/70 p-3 text-sm">No issue descriptions generated.</p>
+        )}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CopilotList title="Edge cases" items={report.edgeCases} />
+        <CopilotList title="Regression checklist" items={report.regressionChecklist} />
+        <CopilotList title="Known risks" items={report.releaseNotes.knownRisks} />
+        <CopilotList title="Safe to ship" items={report.releaseNotes.safeToShip} />
+      </div>
+
+      <div>
+        <p className="text-sm font-semibold">Support handoff note</p>
+        <p className="mt-2 rounded-md bg-white/70 p-3 text-sm leading-6">{report.supportHandoffNote}</p>
+      </div>
+    </div>
+  );
+}
+
+function CopilotList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-sm font-semibold">{title}</p>
+      <div className="mt-2 grid gap-2">
+        {items.length ? (
+          items.map((item) => (
+            <p className="break-words rounded-md bg-white/70 px-3 py-2 text-sm leading-5" key={item}>
+              {item}
+            </p>
+          ))
+        ) : (
+          <p className="rounded-md bg-white/70 px-3 py-2 text-sm leading-5">No items generated.</p>
+        )}
+      </div>
+    </div>
   );
 }
 

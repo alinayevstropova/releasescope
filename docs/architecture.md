@@ -84,6 +84,14 @@ This is useful for:
 
 Demo mode still runs through the same scoring and Zod result validation, so it exercises the same product contract as live audits.
 
+## AI Copilot Layer
+
+The AI copilot layer lives outside the core audit decision logic. `src/lib/openai/summary.ts` calls OpenAI when an API key is available, but the model must return a structured JSON report that is parsed and validated by `src/lib/openai/copilot-report.ts`.
+
+Prompt templates live in `src/ai/prompts/release-copilot.ts`.
+
+The UI can render either a generated report or a deterministic fallback report. This keeps demos and tests stable when `OPENAI_API_KEY` is missing.
+
 ## Testing Strategy
 
 The Phase 2 unit tests live in `src/lib/qa/assessment.test.ts` and run with Vitest.

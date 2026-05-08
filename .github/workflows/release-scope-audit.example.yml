@@ -1,0 +1,80 @@
+name: ReleaseScope Audit Example
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: URL to audit
+        required: true
+        default: https://example.com
+      fail_on:
+        description: Release gate policy
+        required: true
+        default: review
+        type: choice
+        options:
+          - blocked
+          - review
+          - never
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ReleaseScope audit
+        id: releasescope
+        continue-on-error: true
+        run: |
+          node bin/release-scope.mjs audit "${{ inputs.target_url }}" \
+            --no-ai \
+            --json \
+            --output releasescope-artifacts/audit.json \
+            --artifact-dir releasescope-artifacts \
+            --fail-on "${{ inputs.fail_on }}"
+
+      - name: Upload ReleaseScope artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: releasescope-audit-artifacts
+          path: releasescope-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Comment ReleaseScope risk
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const body = fs.readFileSync('releasescope-artifacts/pr-comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Enforce ReleaseScope gate
+        if: steps.releasescope.outcome == 'failure'
+        run: exit 1

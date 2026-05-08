@@ -1,3 +1,5 @@
+import { mkdir } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { chromium } from "playwright";
 import { assessAudit } from "@/lib/qa/assessment";
 import { AuditTargetLoadError } from "@/lib/qa/errors";
@@ -28,6 +30,11 @@ export async function runQaAudit(input: QaAuditRequest): Promise<QaAuditResult> 
   const startedAt = new Date(started).toISOString();
   const warnings: string[] = [];
   const targetUrl = await prepareAuditTargetUrl(input.url);
+  const artifactDir = input.artifactDir ? resolve(input.artifactDir) : undefined;
+
+  if (artifactDir) {
+    await prepareBrowserArtifactDirs(artifactDir);
+  }
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
@@ -36,12 +43,22 @@ export async function runQaAudit(input: QaAuditRequest): Promise<QaAuditResult> 
   });
   const page = await context.newPage();
   const runtimeSignals = collectRuntimeSignals(page, warnings);
+  let traceStarted = false;
 
   let snapshot: PageSnapshot;
   let accessibility: AccessibilityReport;
   let security: SecurityReport;
 
   try {
+    if (artifactDir) {
+      try {
+        await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+        traceStarted = true;
+      } catch (error) {
+        warnings.push(`Playwright tracing could not start: ${getErrorMessage(error)}`);
+      }
+    }
+
     const response = await page
       .goto(targetUrl, {
         waitUntil: "domcontentloaded",
@@ -60,14 +77,33 @@ export async function runQaAudit(input: QaAuditRequest): Promise<QaAuditResult> 
     snapshot = await capturePageSnapshot(page, response, runtimeSignals);
     snapshot.contentChecks = analyzeContentSnapshot(snapshot);
     security = await analyzeSecurityBasics(response, snapshot.finalUrl);
-    accessibility = await runAccessibilityAudit(page);
+    accessibility = await runAccessibilityAudit(page, { artifactDir });
+
+    if (artifactDir) {
+      await page
+        .screenshot({
+          path: join(artifactDir, "screenshots", "page-full.png"),
+          fullPage: true,
+        })
+        .catch((error) =>
+          warnings.push(`Page screenshot could not be saved: ${getErrorMessage(error)}`),
+        );
+    }
   } finally {
+    if (traceStarted && artifactDir) {
+      await context.tracing
+        .stop({ path: join(artifactDir, "traces", "playwright-trace.zip") })
+        .catch((error) =>
+          warnings.push(`Playwright trace could not be saved: ${getErrorMessage(error)}`),
+        );
+    }
+
     await browser.close();
   }
 
   let lighthouse: LighthouseReport | undefined;
   try {
-    lighthouse = await runLighthouseAudit(targetUrl, input.viewport);
+    lighthouse = await runLighthouseAudit(targetUrl, input.viewport, { artifactDir });
   } catch (error) {
     warnings.push(`Lighthouse audit failed: ${getErrorMessage(error)}`);
   }
@@ -92,4 +128,13 @@ export async function runQaAudit(input: QaAuditRequest): Promise<QaAuditResult> 
     ...result,
     assessment: assessAudit(result, { scoringWeights: input.scoringWeights }),
   };
+}
+
+async function prepareBrowserArtifactDirs(artifactDir: string) {
+  await Promise.all([
+    mkdir(join(artifactDir, "screenshots"), { recursive: true }),
+    mkdir(join(artifactDir, "traces"), { recursive: true }),
+    mkdir(join(artifactDir, "lighthouse"), { recursive: true }),
+    mkdir(join(artifactDir, "axe"), { recursive: true }),
+  ]);
 }

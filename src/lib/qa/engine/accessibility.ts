@@ -1,13 +1,26 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import type { Result as AxeResult } from "axe-core";
+import type { AxeResults, Result as AxeResult } from "axe-core";
 import type { Page } from "playwright";
 import type { AccessibilityReport, AccessibilityViolation, AuditSeverity } from "@/lib/qa/types";
 import { trimText } from "@/lib/qa/engine/text";
 
-export async function runAccessibilityAudit(page: Page): Promise<AccessibilityReport> {
+export type AccessibilityAuditOptions = {
+  artifactDir?: string;
+};
+
+export async function runAccessibilityAudit(
+  page: Page,
+  options: AccessibilityAuditOptions = {},
+): Promise<AccessibilityReport> {
   const axeResults = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
     .analyze();
+
+  if (options.artifactDir) {
+    await writeAxeArtifact(options.artifactDir, axeResults);
+  }
 
   return toAccessibilityReport(axeResults.violations, {
     incompleteCount: axeResults.incomplete.length,
@@ -73,4 +86,11 @@ export function impactRank(impact: AccessibilityViolation["impact"]) {
     minor: 1,
     unknown: 0,
   }[impact];
+}
+
+async function writeAxeArtifact(artifactDir: string, axeResults: AxeResults) {
+  const axeDir = join(artifactDir, "axe");
+
+  await mkdir(axeDir, { recursive: true });
+  await writeFile(join(axeDir, "axe-report.json"), JSON.stringify(axeResults, null, 2));
 }

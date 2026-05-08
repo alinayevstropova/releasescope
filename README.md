@@ -11,6 +11,8 @@ The product is designed to feel like a real QA command center: clear empty state
 - [Product vision](docs/product-vision.md)
 - [Architecture](docs/architecture.md)
 - [AI QA copilot](docs/ai-copilot.md)
+- [CLI](docs/cli.md)
+- [GitHub Actions](docs/github-actions.md)
 
 ## Preview
 
@@ -40,13 +42,14 @@ npm run dev
 - Shows polished empty, loading, success, warning, and error states
 - Supports desktop and mobile viewport audits
 - Optionally generates an OpenAI QA summary when `OPENAI_API_KEY` is configured
+- Runs from the command line and writes CI-ready JSON, Markdown reports, PR comments, screenshots, traces, Lighthouse JSON, and axe reports
 
 ## Product Roadmap
 
 ReleaseScope is designed to expand as a product ecosystem:
 
 - **ReleaseScope Cloud**: project dashboard, release history, team ownership, trend charts, and shareable audit reports
-- **ReleaseScope CLI**: `npx releasescope audit https://example.com` for local and CI usage
+- **ReleaseScope CLI**: `node bin/release-scope.mjs audit https://example.com` for local and CI usage
 - **ReleaseScope GitHub Action**: audit preview deployments and comment release risk directly on pull requests
 - **ReleaseScope Browser Extension**: connect manual page inspection with the cloud dashboard
 - **AI QA Copilot**: generate edge cases, regression plans, issue descriptions, support handoff notes, and release notes
@@ -66,6 +69,20 @@ Playwright covers the main user-facing paths:
 - API validation for malformed requests and invalid JSON
 
 CI runs `npm audit --omit=dev`, typecheck, lint, production build, and Playwright tests on desktop and mobile Chromium. Failed runs keep the Playwright HTML report, traces, screenshots, and videos as GitHub Actions artifacts.
+
+Shared sample fixture for demos/tests: [`src/lib/qa/fixtures/sample-report.ts`](src/lib/qa/fixtures/sample-report.ts).
+
+## CLI and CI
+
+```bash
+node bin/release-scope.mjs audit https://example.com \
+  --json \
+  --output releasescope-artifacts/audit.json \
+  --artifact-dir releasescope-artifacts \
+  --fail-on review
+```
+
+The CLI can emit Markdown for humans, JSON for CI, and a PR-ready release risk comment. See [CLI](docs/cli.md) and [GitHub Actions](docs/github-actions.md).
 
 ## Stack
 
@@ -89,6 +106,8 @@ npm run dev
 npm run typecheck
 npm run lint
 npm run build
+npm run cli
+npm run cli:audit -- https://example.com -- --json
 npm run test:e2e
 npm run test:e2e:headed
 npm run test:e2e:report

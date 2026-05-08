@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import type { AiCopilotReport, QaAuditResult } from "@/lib/qa/types";
+import { sampleAuditResult, sampleCopilotReport } from "@/lib/qa/fixtures/sample-report";
 
 test("home page loads with clear product copy and no serious accessibility violations", async ({ page }) => {
   await page.goto("/");
@@ -21,7 +21,6 @@ test("home page loads with clear product copy and no serious accessibility viola
 
   expect(seriousViolations).toEqual([]);
 });
-
 test("keeps invalid target URLs in the browser validation path", async ({ page }) => {
   let apiRequests = 0;
   await page.route("**/api/audits", async (route) => {
@@ -42,7 +41,7 @@ test("shows a useful loading state while the audit is running", async ({ page })
     await new Promise((resolve) => setTimeout(resolve, 2_000));
     await route.fulfill({
       contentType: "application/json",
-      json: mockAuditResult,
+      json: sampleAuditResult,
     });
   });
 
@@ -71,7 +70,7 @@ test("renders release decision, backlog, and plain-language page-quality finding
   await page.route("**/api/audits", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      json: mockAuditResult,
+      json: sampleAuditResult,
     });
   });
 
@@ -110,11 +109,11 @@ test("renders structured AI copilot fallback sections", async ({ page }) => {
     await route.fulfill({
       contentType: "application/json",
       json: {
-        ...mockAuditResult,
+        ...sampleAuditResult,
         aiSummary: {
           status: "skipped",
           reason: "OPENAI_API_KEY is not configured.",
-          fallbackReport: mockCopilotReport,
+          fallbackReport: sampleCopilotReport,
         },
       },
     });
@@ -138,7 +137,7 @@ test("page-quality fixes use the page scroll instead of a nested scroll box", as
   await page.route("**/api/audits", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      json: mockAuditResult,
+      json: sampleAuditResult,
     });
   });
 
@@ -210,117 +209,3 @@ test("audit api rejects invalid JSON bodies", async ({ request }) => {
     }),
   );
 });
-
-const mockAuditResult: QaAuditResult = {
-  id: "audit_mock",
-  url: "https://example.com/",
-  viewport: "desktop",
-  startedAt: "2026-05-01T12:00:00.000Z",
-  finishedAt: "2026-05-01T12:00:07.000Z",
-  durationMs: 7000,
-  page: {
-    title: "Example Product",
-    description: null,
-    finalUrl: "https://example.com/",
-    status: 200,
-    h1: ["Example Product"],
-    consoleErrors: [],
-    pageErrors: [],
-    failedRequests: [],
-  },
-  accessibility: {
-    violationCount: 1,
-    incompleteCount: 0,
-    passesCount: 42,
-    violations: [
-      {
-        id: "button-name",
-        impact: "serious",
-        description: "Ensures buttons have discernible text",
-        help: "Buttons must have discernible text",
-        helpUrl: "https://dequeuniversity.com/rules/axe/4.11/button-name",
-        nodeCount: 1,
-        nodes: [
-          {
-            target: ["button.icon-only"],
-            html: '<button class="icon-only"></button>',
-          },
-        ],
-      },
-    ],
-  },
-  lighthouse: {
-    fetchTime: "2026-05-01T12:00:07.000Z",
-    categories: [
-      { id: "performance", title: "Performance", score: 72 },
-      { id: "accessibility", title: "Accessibility", score: 91 },
-      { id: "best-practices", title: "Best Practices", score: 100 },
-      { id: "seo", title: "SEO", score: 84 },
-    ],
-    findings: [
-      {
-        id: "largest-contentful-paint",
-        title: "Largest Contentful Paint element",
-        description: "Reduce the time spent rendering the largest contentful paint element.",
-        category: "Performance",
-        score: 0,
-        displayValue: "3.2 s",
-      },
-      {
-        id: "unminified-javascript",
-        title: "Minify JavaScript",
-        description: "Minifying JavaScript files can reduce payload sizes and script parse time.",
-        category: "Performance",
-        score: 0,
-        displayValue: "Est savings of 182 KiB",
-      },
-    ],
-  },
-  assessment: {
-    score: 76,
-    decision: "review",
-    riskLevel: "medium",
-    headline: "Needs QA review before release (76/100).",
-    blockers: [],
-    quickWins: [
-      "Add a meta description for clearer search and sharing snippets.",
-      "Review the lowest page speed findings first.",
-    ],
-    issueBacklog: [
-      {
-        title: "Fix Buttons must have discernible text",
-        area: "accessibility",
-        priority: "P1",
-        evidence: "1 affected element: button-name",
-      },
-      {
-        title: "Improve page speed score",
-        area: "performance",
-        priority: "P2",
-        evidence: "Current score: 72/100.",
-      },
-    ],
-  },
-  warnings: [],
-};
-
-const mockCopilotReport: AiCopilotReport = {
-  plainLanguageSummary: "Release needs QA review because accessibility and page-quality risks remain.",
-  issueDescriptions: [
-    {
-      title: "Fix unnamed button",
-      priority: "P1",
-      expectedBehavior: "The button has a visible or programmatic accessible name.",
-      actualBehavior: "The audit found a button without discernible text.",
-      evidence: "button-name affected one element.",
-      suggestedFix: "Add visible text or aria-label and rerun axe-core.",
-    },
-  ],
-  edgeCases: ["Keyboard-only audit of the primary flow."],
-  regressionChecklist: ["Run typecheck, lint, build, and Playwright tests."],
-  supportHandoffNote: "Support should know accessibility fixes are still under review.",
-  releaseNotes: {
-    knownRisks: ["An accessibility issue remains open."],
-    safeToShip: ["No server error was detected."],
-  },
-};

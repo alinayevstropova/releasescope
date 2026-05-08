@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { chromium } from "playwright";
 import type {
   AuditFindingCategory,
@@ -9,9 +11,14 @@ import type {
 } from "@/lib/qa/types";
 import { VIEWPORTS } from "@/lib/qa/engine/viewport";
 
+export type LighthouseAuditOptions = {
+  artifactDir?: string;
+};
+
 export async function runLighthouseAudit(
   targetUrl: string,
   viewport: AuditViewport,
+  options: LighthouseAuditOptions = {},
 ): Promise<LighthouseReport> {
   const [{ default: lighthouse }, chromeLauncher] = await Promise.all([
     import("lighthouse"),
@@ -51,6 +58,11 @@ export async function runLighthouseAudit(
     }
 
     const lhr = runnerResult.lhr;
+
+    if (options.artifactDir) {
+      await writeLighthouseArtifact(options.artifactDir, lhr);
+    }
+
     const categories: LighthouseCategory[] = Object.values(lhr.categories).map((category) => ({
       id: category.id,
       title: category.title,
@@ -143,4 +155,11 @@ function normalizeCategory(id: string, title: string): AuditFindingCategory | st
   }
 
   return title;
+}
+
+async function writeLighthouseArtifact(artifactDir: string, lhr: unknown) {
+  const lighthouseDir = join(artifactDir, "lighthouse");
+
+  await mkdir(lighthouseDir, { recursive: true });
+  await writeFile(join(lighthouseDir, "lighthouse-report.json"), JSON.stringify(lhr, null, 2));
 }

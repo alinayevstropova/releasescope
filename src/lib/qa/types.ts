@@ -8,6 +8,7 @@ export type QaAuditRequest = {
   includeAi: boolean;
   notes?: string;
   demoMode?: boolean;
+  artifactDir?: string;
   scoringWeights?: Partial<AuditScoringWeights>;
 };
 

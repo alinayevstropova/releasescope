@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useId, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bot,
@@ -90,17 +90,46 @@ export function AuditConsole() {
   const [result, setResult] = useState<QaAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const reportRegionRef = useRef<HTMLElement>(null);
+  const shouldScrollToReportRef = useRef(false);
+
+  useEffect(() => {
+    if (!result || !shouldScrollToReportRef.current) {
+      return;
+    }
+
+    shouldScrollToReportRef.current = false;
+    reportRegionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [result]);
 
   async function runAudit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    await runAuditRequest({ demoMode: false });
+  }
+
+  async function runDemoAudit() {
+    setUrl(DEFAULT_TARGET_URL);
+    await runAuditRequest({ demoMode: true });
+  }
+
+  async function runAuditRequest({ demoMode }: { demoMode: boolean }) {
     setIsRunning(true);
     setError(null);
+    setResult(null);
+
+    const targetUrl = demoMode ? DEFAULT_TARGET_URL : url;
 
     try {
       const response = await fetch("/api/audits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, viewport, includeAi, notes: notes || undefined }),
+        body: JSON.stringify({
+          url: targetUrl,
+          viewport,
+          includeAi,
+          notes: notes || undefined,
+          demoMode,
+        }),
       });
 
       const payload = await response.json();
@@ -108,6 +137,7 @@ export function AuditConsole() {
         throw new Error(payload.error ?? "Audit failed.");
       }
 
+      shouldScrollToReportRef.current = true;
       setResult(payload);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Audit failed.");
@@ -134,7 +164,7 @@ export function AuditConsole() {
               <CapabilityPill icon={<Bot className="h-4 w-4" aria-hidden="true" />} label="AI summary" />
             </div>
           </div>
-          <SignatureSignal />
+          <SignatureSignal result={result} />
         </div>
       </section>
 
@@ -193,19 +223,31 @@ export function AuditConsole() {
             </div>
           </fieldset>
 
-          <button
-            className="qa-hover-lift inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#0f1f1b] px-5 text-sm font-semibold text-white transition hover:bg-[#19352e] disabled:cursor-not-allowed disabled:bg-neutral-400"
-            disabled={isRunning}
-            title="Run browser checks, accessibility checks, page-quality scoring, and optional AI summary"
-            type="submit"
-          >
-            {isRunning ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Play className="h-4 w-4" aria-hidden="true" />
-            )}
-            {isRunning ? "Running audit" : "Run audit"}
-          </button>
+          <div className="grid gap-2 sm:grid-cols-2 lg:w-72">
+            <button
+              className="qa-hover-lift inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#0f1f1b] px-5 text-sm font-semibold text-white transition hover:bg-[#19352e] disabled:cursor-not-allowed disabled:bg-neutral-400"
+              disabled={isRunning}
+              title="Run browser checks, accessibility checks, page-quality scoring, and optional AI summary"
+              type="submit"
+            >
+              {isRunning ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Play className="h-4 w-4" aria-hidden="true" />
+              )}
+              {isRunning ? "Running audit" : "Run audit"}
+            </button>
+            <button
+              className="qa-hover-lift inline-flex h-12 items-center justify-center gap-2 rounded-md border border-emerald-900/15 bg-emerald-50 px-4 text-sm font-semibold text-emerald-950 transition hover:border-emerald-900/30 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500"
+              disabled={isRunning}
+              onClick={runDemoAudit}
+              title="Run a deterministic demo report without external network calls"
+              type="button"
+            >
+              <Target className="h-4 w-4" aria-hidden="true" />
+              Demo report
+            </button>
+          </div>
 
           <label className="flex items-center gap-3 rounded-md bg-[#f6faf8] px-4 py-3 lg:col-span-3">
             <input
@@ -234,7 +276,11 @@ export function AuditConsole() {
         </form>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-5 py-6 lg:px-8">
+      <section
+        className="mx-auto w-full max-w-7xl scroll-mt-4 px-5 py-6 lg:px-8"
+        data-testid="report-region"
+        ref={reportRegionRef}
+      >
         {error ? (
           <div
             className="mb-5 flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-950"
@@ -289,11 +335,29 @@ function CapabilityPill({ icon, label }: { icon: React.ReactNode; label: string 
   );
 }
 
-function SignatureSignal() {
+function SignatureSignal({ result }: { result: QaAuditResult | null }) {
+  const score = result?.assessment.score ?? 76;
+  const decision = result?.assessment.decision ?? "review";
+  const decisionLabel = decisionStyles[decision].label;
+  const signalMode = result ? "Live" : "Sample";
+  const evidenceValue = result
+    ? `${[
+        result.accessibility ? "accessibility" : null,
+        result.lighthouse ? "lighthouse" : null,
+        result.security ? "security" : null,
+      ].filter(Boolean).length} scans`
+    : "3 scans";
+  const riskValue = result
+    ? result.assessment.issueBacklog.length === 1
+      ? "1 fix"
+      : `${result.assessment.issueBacklog.length} fixes`
+    : "3 fixes";
+  const actionValue = result?.assessment.issueBacklog.length ? "Backlog" : "Clear";
+
   return (
     <div
       className="qa-signature qa-hover-lift hidden min-h-[320px] overflow-hidden rounded-md border border-white/10 bg-white/[0.07] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.24)] backdrop-blur md:block"
-      title="Sample release map generated by ReleaseScope"
+      title={result ? "Latest release map generated by ReleaseScope" : "Sample release map generated by ReleaseScope"}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -301,14 +365,14 @@ function SignatureSignal() {
           <p className="mt-1 text-xs leading-5 text-emerald-50/70">How evidence becomes a decision</p>
         </div>
         <span className="rounded-sm bg-white/10 px-2 py-1 text-xs font-medium text-cyan-100">
-          Sample
+          {signalMode}
         </span>
       </div>
 
       <div className="relative mt-5 overflow-hidden rounded-md bg-white/[0.08] p-4">
         <div className="absolute inset-x-6 top-1/2 h-16 -translate-y-1/2 rounded-full bg-cyan-300/10 blur-2xl" aria-hidden="true" />
         <svg
-          aria-label="Sample release map: QA confidence 76 out of 100, evidence strong, risk needs review, action backlog ready"
+          aria-label={`Release map: QA confidence ${score} out of 100, release decision ${decisionLabel}, action ${actionValue.toLowerCase()}`}
           className="relative h-44 w-full"
           role="img"
           viewBox="0 0 260 210"
@@ -358,7 +422,7 @@ function SignatureSignal() {
           <line stroke="rgba(255,255,255,0.14)" strokeWidth="1" x1="130" x2="54" y1="104" y2="104" />
           <circle cx="130" cy="104" fill="#07130f" r="42" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
           <text fill="#eafff7" fontSize="25" fontWeight="700" textAnchor="middle" x="130" y="100">
-            76
+            {score}
           </text>
           <text fill="rgba(234,255,247,0.62)" fontSize="12" fontWeight="500" textAnchor="middle" x="130" y="120">
             QA score
@@ -372,7 +436,7 @@ function SignatureSignal() {
             Evidence strong
           </span>
           <span className="rounded-sm bg-amber-300/15 px-2 py-1 font-semibold text-amber-100">
-            Needs review
+            {decisionLabel}
           </span>
         </div>
       </div>
@@ -381,17 +445,17 @@ function SignatureSignal() {
         <SignalFact
           icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />}
           label="Evidence"
-          value="3 scans"
+          value={evidenceValue}
         />
         <SignalFact
           icon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}
           label="Risk"
-          value="3 fixes"
+          value={riskValue}
         />
         <SignalFact
           icon={<ClipboardList className="h-4 w-4" aria-hidden="true" />}
           label="Action"
-          value="Backlog"
+          value={actionValue}
         />
       </div>
     </div>

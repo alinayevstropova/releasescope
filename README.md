@@ -29,13 +29,17 @@ npm run dev
 
 ![ReleaseScope empty dashboard](public/screenshots/dashboard-empty.png)
 
+Empty state with the audit form, release map, and clear explanation of how evidence becomes a release decision.
+
 ![ReleaseScope audit report](public/screenshots/dashboard-report.png)
 
+Generated audit report with release decision, QA score, issue-ready backlog, page-quality fixes, and AI handoff prompt.
 
 ## What It Does
 
 - Produces a release decision: `ready`, `needs review`, or `blocked`
 - Calculates a weighted QA score from runtime, accessibility, Lighthouse, and content signals
+- Runs a deterministic demo report for portfolio reviews without relying on external network calls
 - Builds an issue-ready backlog with priorities and evidence
 - Translates technical Lighthouse checks into plain-language page-quality fixes
 - Copies an AI-ready repair brief for coding agents, including evidence and verification commands
@@ -43,6 +47,10 @@ npm run dev
 - Supports desktop and mobile viewport audits
 - Optionally generates an OpenAI QA summary when `OPENAI_API_KEY` is configured
 - Runs from the command line and writes CI-ready JSON, Markdown reports, PR comments, screenshots, traces, Lighthouse JSON, and axe reports
+
+## Why It Matters For Teams
+
+ReleaseScope gives product and engineering teams a shared release signal before a change reaches users. Developers get reproducible evidence, QA gets prioritized checks, support gets handoff notes, and product owners get a clear answer to the question: can this release ship now, or does it need review?
 
 ## Product Roadmap
 

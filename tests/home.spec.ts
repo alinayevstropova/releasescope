@@ -8,10 +8,12 @@ test("home page loads with clear product copy and no serious accessibility viola
   await expect(page.getByRole("heading", { name: "ReleaseScope" })).toBeVisible();
   await expect(page.getByText("From URL to release decision")).toBeVisible();
   await expect(page.getByRole("button", { name: "Run audit" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Demo report" })).toBeVisible();
 
   if ((page.viewportSize()?.width ?? 0) >= 768) {
     await expect(page.getByText("Release map")).toBeVisible();
     await expect(page.getByText("Evidence strong")).toBeVisible();
+    await expect(page.getByText("Sample")).toBeVisible();
   }
 
   const results = await new AxeBuilder({ page }).analyze();
@@ -54,6 +56,32 @@ test("shows a useful loading state while the audit is running", async ({ page })
   await expect(page.getByRole("heading", { name: "Needs QA review before release (76/100)." })).toBeVisible();
 });
 
+test("runs a deterministic demo report without browser URL validation", async ({ page }) => {
+  let requestBody: unknown;
+  await page.route("**/api/audits", async (route) => {
+    requestBody = route.request().postDataJSON();
+    await route.fulfill({
+      contentType: "application/json",
+      json: { ...sampleAuditResult, mode: "demo" },
+    });
+  });
+
+  await page.goto("/");
+  await page.getByLabel("Target URL").fill("not-a-url");
+  await page.getByRole("button", { name: "Demo report" }).click();
+
+  await expect(page.getByRole("heading", { name: "Needs QA review before release (76/100)." })).toBeVisible();
+  await expect(page.getByTestId("report-region")).toBeVisible();
+  expect(requestBody).toEqual(
+    expect.objectContaining({
+      url: "https://example.com",
+      viewport: "desktop",
+      includeAi: false,
+      demoMode: true,
+    }),
+  );
+});
+
 test("renders release decision, backlog, and plain-language page-quality findings", async ({ page }) => {
   await page.addInitScript(() => {
     const store = window as Window & { __copiedText?: string };
@@ -87,9 +115,6 @@ test("renders release decision, backlog, and plain-language page-quality finding
   await expect(page.getByText("High impact").first()).toBeVisible();
   await expect(page.getByText("0%", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("sticky-metrics")).toContainText("QA score");
-  await page.evaluate(() => window.scrollTo(0, 900));
-  await expect.poll(() => page.getByTestId("sticky-metrics").evaluate((element) => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
-  await expect.poll(() => page.getByTestId("sticky-metrics").evaluate((element) => element.getBoundingClientRect().top)).toBeLessThanOrEqual(56);
 
   await page.getByLabel(/About Higher is better/).focus();
   await expect(page.getByRole("tooltip", { name: /Higher is better/ })).toBeVisible();

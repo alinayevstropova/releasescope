@@ -146,8 +146,21 @@ export function AuditConsole() {
     }
   }
 
+  const isVercelDeployment = process.env.NEXT_PUBLIC_VERCEL_ENV !== undefined;
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#edf2f0] text-neutral-950">
+      {isVercelDeployment && (
+        <div className="flex items-center justify-center gap-2 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800 border-b border-amber-200">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Demo deployment — live browser audits require a{" "}
+            <a href="https://github.com/alinayevstropova/releasescope#getting-started" className="underline underline-offset-2 font-medium" target="_blank" rel="noopener noreferrer">
+              self-hosted setup
+            </a>. Click <strong>Run Demo</strong> to see a full sample report.
+          </span>
+        </div>
+      )}
       <section className="relative overflow-hidden bg-[#07130f] text-white">
         <div className="qa-grid-bg absolute inset-0 opacity-70" aria-hidden="true" />
         <div className="relative mx-auto grid w-full max-w-7xl gap-8 px-5 pb-12 pt-7 lg:grid-cols-[1fr_420px] lg:px-8">

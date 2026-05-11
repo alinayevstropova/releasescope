@@ -11,7 +11,7 @@ import { auditRequestSchema, qaAuditResultSchema } from "@/lib/qa/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 10;
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -30,11 +30,14 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const result = await runQaAudit(parsed.data);
+  // Vercel serverless does not support Playwright/Chromium — force demo mode.
+  const data = process.env.VERCEL ? { ...parsed.data, demoMode: true } : parsed.data;
 
-    if (parsed.data.includeAi) {
-      result.aiSummary = await summarizeAuditWithAi(result, parsed.data.notes);
+  try {
+    const result = await runQaAudit(data);
+
+    if (data.includeAi) {
+      result.aiSummary = await summarizeAuditWithAi(result, data.notes);
     }
 
     return NextResponse.json(qaAuditResultSchema.parse(result));
